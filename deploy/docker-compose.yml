@@ -1,0 +1,61 @@
+version: "2"
+
+services:
+  scheduler:
+    image: bbvalabs/scheduler:0.5.1-47
+    environment:
+      - ORCHESTRATOR=DockerCompose
+      - ORCHESTRATOR_URL=http://localhost
+      - ORCHESTRATOR_TOKEN="no_token"
+      - KAFKA_SERVERS=kafka
+      - MONGODB_URL=mongo
+      - MONGODB_PORT=27017
+      - MONGODB_DATABASE=modeling
+      - MONGODB_USER=userS1H
+      - MONGODB_PASSWORD=14tHhw1FjcP42Xiy
+      - CELERY_AMQP_BROKER=rabbitmq
+    networks:
+      - beagleml
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["./start.sh"]
+    depends_on:
+      - kafka
+      - mongo
+      - rabbitmq
+
+  mongo:
+    image: centos/mongodb-32-centos7@sha256:3a6588194d61d03b19401247b82405ef94a417efae0bfc21f67bf517a59b861d
+    environment:
+      - MONGODB_USER=userS1H
+      - MONGODB_PASSWORD=14tHhw1FjcP42Xiy
+      - MONGODB_DATABASE=modeling
+      - MONGODB_ADMIN_PASSWORD=14tHhw1FjcP42Xiy
+    ports:
+      - "27017:27017"
+
+  kafka:
+    image: spotify/kafka@sha256:cf8f8f760b48a07fb99df24fab8201ec8b647634751e842b67103a25a388981b
+    environment:
+      - ADVERTISED_PORT=9092
+      - ADVERTISED_HOST=kafka
+    networks:
+      - beagleml
+    ports:
+      - "2181:2181"
+      - "9092:9092"
+
+  rabbitmq:
+    image: rabbitmq:3@sha256:661c09adce41cb4eee57da29fc22d321cfbbd6a01e572fc6b39195f396194275
+    networks:
+      - beagleml
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+networks:
+  beagleml:
+    driver: bridge
+

@@ -1,0 +1,39 @@
+timeOut: 80.0  # Time out for the experiments
+accuracy_limit: 0.98
+optimization:
+    type: 'grid' # type of the search: grid/evolution
+    objective_function: 'experiment_time' # function to optimize (key in metrics): time / accuracy
+    objectiveResult: 'min' # objective of the optimization: min / max
+project:
+  - name: 'neural_networks'  # name of the project
+    template: 'dockercompose_model_template_neural-networks.yml'  # name of the template
+    parameters:
+      - name: HIDDEN_SIZE
+        type: layers
+        value:
+          number_layers:
+            - 1
+            - 2
+          number_units:
+            - 20
+            - 50
+      - name: 'LEARNING_RATE'
+        type: 'lineal'
+        value:
+            initial_value: 0.01
+            final_value: 0.1
+            interval: 0.04
+      - name: TEST_SIZE
+        type: absolute
+        value:
+          - 5
+          - 10
+      - name: EPOCHS
+        type: absolute
+        value:
+          - 4
+          - 1
+      - name: 'KAFKA_SERVICE'
+        type: 'absolute'
+        value:
+          - 'kafka'

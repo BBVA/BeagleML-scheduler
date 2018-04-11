@@ -1,0 +1,152 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: @{CATALOG_NAME}
+  annotations:
+    description: "Automodeling tool for hyperparameter tunning."
+    tags: "automodeling"
+
+parameters:
+  - name: NAMESPACE
+    description: "Openshift namespace to deploy into."
+    value: "modeling"
+    required: true
+  - name: KAFKA_SERVERS
+    description: "Kafka Openshift service to use for modeling purposes."
+    value: kafka-persistent.common.svc
+    required: true
+  - name: MONGODB_URL
+    description: "Openshift MongoDB service to access"
+    value: mongodb.common.svc
+  - name: MONGODB_DATABASE
+    description: Name of the database
+    value: sampledb
+    required: true
+  - name: MONGODB_PORT
+    value: '27017'
+    required: true
+  - name: MONGODB_USER
+    value: userS1H
+    required: true
+  - name: MONGODB_PASSWORD
+    value: 14tHhw1FjcP42Xiy
+    required: true
+  - name: CPU_REQUEST
+    description: "Minimum cpu requested"
+    value: "1"
+    required: true
+  - name: CPU_LIMIT
+    description: "Maximum cpu requested"
+    value: "2"
+    required: true
+  - name: MEM_REQUEST
+    description: "Minimum memory requested"
+    value: 512Mi
+    required: true
+  - name: MEM_LIMIT
+    description: "Maximum memory requested"
+    value: 1024Mi
+    required: true
+
+objects:
+
+  - kind: Secret
+    apiVersion: v1
+    metadata:
+      labels:
+        app: @{NAME}
+      name: @{NAME}
+    stringData:
+      token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJtb2RlbGluZyIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJtb2RlbGluZy1ib3QtdG9rZW4tNGg4NmQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoibW9kZWxpbmctYm90Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiN2VjNWMxNTktNmM3Yi0xMWU3LWFiZTEtNDIwMTBhODQwMDAyIiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50Om1vZGVsaW5nOm1vZGVsaW5nLWJvdCJ9.UUrf9gUfNgJ8WjkOJpPeaJW7drKn5QsyfHAZlRydWdREmPjDm_ZhZRtjPjrOK2R1rvcJuD3DfbBoWf0r3PFoUnW38GWNRM-KvtPRJ4VqrOmgMKkR4aAS6v8Z84OXH_clbzPs08iJKjBhA-kT5zifknRf76xNp0qNFh6kfOt1A9X1c7Hg7vJaql6RVnDDrdyzCupmTosRkhsTk6j1rz2Q_nm7L471UrC2idNN-_nCbMQy5bx7I8yEnJZf0Ybz7-mOnAtVhDTMgkpimBvAUs67MCGH2I2qfRqQ3z2Le7cdSdS2KkEfhHiD8m_2-vqxg5VRLsY3zoruSESu9XG2KqLoYQ"
+
+  - kind: Service
+    apiVersion: v1
+    metadata:
+      name: @{NAME}
+      namespace: ${NAMESPACE}
+      labels:
+        app: @{NAME}
+    spec:
+      ports:
+      - name: @{NAME}
+        port: 5000
+      clusterIP: None
+      selector:
+        service: @{NAME}
+
+  - kind: DeploymentConfig
+    apiVersion: v1
+    metadata:
+      name: @{NAME}
+      namespace: ${NAMESPACE}
+      labels:
+        app: @{NAME}
+    spec:
+      replicas: 1
+      selector:
+        service: @{NAME}
+      template:
+        metadata:
+          labels:
+            service: @{NAME}
+        spec:
+          restartPolicy: Always
+          containers:
+          - image: @{DOCKER_IMAGE}
+            imagePullPolicy: Always
+            name: @{NAME}
+            ports:
+              - containerPort: 5000
+            env:
+            - name: ORCHESTRATOR
+              value: "OpenShift"
+            - name: ORCHESTRATOR_URL
+              value: https://openshift.default.svc.cluster.local
+            - name: ORCHESTRATOR_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: token
+                  name: @{NAME}
+            - name: KAFKA_SERVERS
+              value: "${KAFKA_SERVERS}"
+            - name: MONGODB_URL
+              value: "${MONGODB_URL}"
+            - name: MONGODB_PORT
+              value: "${MONGODB_PORT}"
+            - name: MONGODB_DATABASE
+              value: "${MONGODB_DATABASE}"
+            - name: MONGODB_USER
+              value: "${MONGODB_USER}"
+            - name: MONGODB_PASSWORD
+              value: "${MONGODB_PASSWORD}"
+            command:
+            - "./run.sh"
+            readinessProbe:
+              tcpSocket:
+                port: 5000
+              initialDelaySeconds: 5
+              periodSeconds: 10
+            livenessProbe:
+              tcpSocket:
+                port: 5000
+              initialDelaySeconds: 15
+              periodSeconds: 20
+            resources:
+              requests:
+                cpu: ${CPU_REQUEST}
+                memory: ${MEM_REQUEST}
+              limits:
+                cpu: ${CPU_LIMIT}
+                memory: ${MEM_LIMIT}
+
+  - apiVersion: v1
+    kind: Route
+    metadata:
+      name: @{NAME}
+      namespace: ${NAMESPACE}
+      labels:
+        app: @{NAME}
+    spec:
+      to:
+        kind: Service
+        name: @{NAME}

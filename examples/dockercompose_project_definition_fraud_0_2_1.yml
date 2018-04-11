@@ -1,0 +1,38 @@
+name: 'fraud021'  # name of the project
+template: 'dockercompose_model_template_fraud-0-2-1.yml'  # name of the template
+experiment_timeout: 600.0  # Time out for the experiments
+experiment_accuracy_limit: 0.85
+optimization:
+    type: 'grid' # type of the search: grid/evolution
+    objective_function: 'experiment_time' # function to optimize (key in metrics): time / accuracy
+    objective_result: 'min' # objective of the optimization: min / max
+parameters:
+  - name: HIDDEN_SIZE
+    type: layers
+    value:
+      number_layers:
+        - 1
+        - 2
+      number_units:
+        - 20
+        - 50
+  - name: 'LEARNING_RATE'
+    type: 'lineal'
+    value:
+        initial_value: 0.01
+        final_value: 0.1
+        interval: 0.04
+  - name: TEST_SIZE
+    type: absolute
+    value:
+      - 5
+      - 10
+  - name: EPOCHS
+    type: absolute
+    value:
+      - 4
+      - 1
+  - name: 'KAFKA_SERVICE'
+    type: 'absolute'
+    value:
+      - 'kafka'

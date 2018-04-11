@@ -1,0 +1,420 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: ml-ex-nn-tf-mod
+  annotations:
+    description: Generic and configurable neural network using tensorflow. Few things
+      modified to work with for testing in automodeling
+    iconClass: ''
+    message: Instantiated ml ex neural network tf...
+    openshift.io/display-name: ml ex neural network tensorflow modified
+    tags: ml
+objects:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: "${NAME}"
+      module: "${NAME}-bokeh"
+    name: "${NAME}-bokeh"
+  spec:
+    clusterIP: None
+    ports:
+    - name: boke-service-port
+      nodePort: 0
+      port: 5006
+      protocol: ''
+      targetPort: 0
+    selector:
+      module: "${NAME}-bokeh"
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: "${NAME}"
+    name: "${NAME}-bokeh"
+  spec:
+    replicas: 1
+    selector:
+      module: "${NAME}-bokeh"
+    strategy:
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: "${NAME}"
+          module: "${NAME}-bokeh"
+      spec:
+        containers:
+        - env:
+          - name: KAFKA_SERVICE
+            value: "${KAFKA_SERVICE}"
+          - name: TOPIC
+            value: "${ROOT_TOPIC}-metrics"
+          image: innotech/bokeh-plotter:0.1.0-7
+          name: "${NAME}-bokeh"
+          ports:
+          - containerPort: 5006
+          readinessProbe:
+            failureThreshold: 5
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 5006
+            timeoutSeconds: 2
+          resources:
+            limits:
+              cpu: 0.5
+              memory: 256Mi
+            requests:
+              cpu: 0.1
+              memory: 128Mi
+          restartPolicy: Always
+          securityContext:
+            privileged: true
+          serviceAccountName: ''
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: "${NAME}"
+    name: "${NAME}-executor"
+  spec:
+    replicas: 1
+    selector:
+      module: "${NAME}-executor"
+    strategy:
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: "${NAME}"
+          module: "${NAME}-executor"
+      spec:
+        containers:
+        - command:
+          - "./main"
+          env:
+          - name: GENERATOR_HOST
+            value: http://${NAME}-botnet:8080
+          - name: TICK_DURATION
+            value: "${TICK_DURATION}"
+          - name: TOPIC
+            value: "${ROOT_TOPIC}-${PRODUCTS}-botnet-output"
+          - name: KAFKA_SERVICE
+            value: "${KAFKA_SERVICE}"
+          image: innotech/botnet-executor-kafka:3.0.0-2
+          name: "${NAME}-executor"
+          ports:
+          - containerPort: 8080
+          resources:
+            limits:
+              cpu: 1
+              memory: 128Mi
+            requests:
+              cpu: 0.5
+              memory: 64Mi
+          restartPolicy: Always
+          securityContext:
+            privileged: true
+          serviceAccountName: ''
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: "${NAME}"
+      module: "${NAME}-botnet"
+    name: "${NAME}-botnet"
+  spec:
+    clusterIP: None
+    ports:
+    - name: botnet-service-port
+      nodePort: 0
+      port: 8080
+      protocol: ''
+      targetPort: 0
+    selector:
+      module: "${NAME}-botnet"
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: "${NAME}"
+    name: "${NAME}-botnet"
+  spec:
+    replicas: 1
+    selector:
+      module: "${NAME}-botnet"
+    strategy:
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: "${NAME}"
+          module: "${NAME}-botnet"
+      spec:
+        containers:
+        - image: innotech/botnet-behavior-create-agreements:2.0.0-23
+          name: "${NAME}-botnet"
+          ports:
+          - containerPort: 8080
+          resources:
+            limits:
+              cpu: 1
+              memory: 1024Mi
+            requests:
+              cpu: 0.5
+              memory: 512Mi
+          restartPolicy: Always
+          securityContext:
+            privileged: true
+          serviceAccountName: ''
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: "${NAME}"
+    name: "${NAME}-etl"
+  spec:
+    replicas: 1
+    selector:
+      module: "${NAME}-etl"
+    strategy:
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: "${NAME}"
+          module: "${NAME}-etl"
+      spec:
+        containers:
+        - env:
+          - name: PRODUCTS
+            value: "${PRODUCTS}"
+          - name: TOPIC
+            value: "${ROOT_TOPIC}-${PRODUCTS}-botnet-output"
+          - name: TOPIC_OUTPUT
+            value: "${ROOT_TOPIC}-${PRODUCTS}-etl-output"
+          - name: INPUT_KAFKA
+            value: "${KAFKA_SERVICE}"
+          - name: KAFKA_GROUP
+            value: "${ROOT_TOPIC}-${PRODUCTS}-botnet-output-consumer"
+          - name: OUTPUT_KAFKA
+            value: "${KAFKA_SERVICE}"
+          image: innotech/etl-create-agreement:1.0.0-23
+          name: "${NAME}-etl"
+          ports:
+          - containerPort: 8080
+          resources:
+            limits:
+              cpu: 1
+              memory: 64Mi
+            requests:
+              cpu: 0.5
+              memory: 32Mi
+          restartPolicy: Always
+          securityContext:
+            privileged: true
+          serviceAccountName: ''
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: "${NAME}"
+    name: "${NAME}-master"
+  spec:
+    replicas: 1
+    selector:
+      module: "${NAME}-master"
+    strategy:
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: "${NAME}"
+          module: "${NAME}-master"
+      spec:
+        containers:
+        - env:
+          - name: ARTIFACTORY_URI
+            value: "${REPO_URI}"
+          - name: KAFKA_GROUP
+            value: "${ROOT_TOPIC}-${PRODUCTS}-etl-output-consumer"
+          - name: LABEL_SIZE
+            value: "${PRODUCTS}"
+          - name: HIDDEN_SIZE
+            value: "${HIDDEN_SIZE}"
+          - name: METRICS_TOPIC
+            value: "${ROOT_TOPIC}-metrics"
+          - name: RECOVER_SESSION
+            value: "${RECOVER_SESSION}"
+          - name: SAVE_INTERVAL
+            value: "${SAVE_INTERVAL}"
+          - name: TEST_SIZE
+            value: "${TEST_SIZE}"
+          - name: EPOCHS
+            value: "${EPOCHS}"
+          - name: TMP_DIRECTORY
+            value: "/tmp"
+          - name: KAFKA_SERVICE
+            value: "${KAFKA_SERVICE}"
+          - name: MODEL_NAME
+            value: "${ROOT_TOPIC}-${PRODUCTS}-model"
+          - name: BATCH_SIZE
+            value: "${BATCH_SIZE}"
+          - name: INPUT_SIZE
+            value: "${PRODUCTS}"
+          - name: JOB_NAME
+            value: worker
+          - name: METRIC_INTERVAL
+            value: "${METRIC_INTERVAL}"
+          - name: TOPIC
+            value: "${ROOT_TOPIC}-${PRODUCTS}-etl-output"
+          - name: LEARNING_RATE
+            value: "${LEARNING_RATE}"
+          image: innotech/generic-neural-network-tensorflow:0.1.0-60
+          name: "${NAME}-master"
+          ports:
+          - containerPort: 2222
+          resources:
+            limits:
+              cpu: 2
+              memory: 1024Mi
+            requests:
+              cpu: 1
+              memory: 512Mi
+          restartPolicy: Always
+          securityContext:
+            privileged: true
+          serviceAccountName: ''
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: "${NAME}"
+    name: "${NAME}-orchestrator"
+  spec:
+    replicas: 1
+    selector:
+      module: "${NAME}-orchestrator"
+    strategy:
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: "${NAME}"
+          module: "${NAME}-orchestrator"
+      spec:
+        containers:
+        - env:
+          - name: INITIALIZE
+            value: 'curl --fail -v -s -d ''{"users": ${USERS}, "products": ${PRODUCTS}}''
+              ${NAME}-botnet:8080/v1/behavior/create;'
+          - name: SHUTDOWN
+            value: curl --fail -v -s ${NAME}-botnet:8080/v1/behavior/reset;
+          - name: STOP_ACCURACY
+            value: "${STOP_ACCURACY}"
+          - name: RESTARTER
+            value: 'false'
+          - name: KAFKA_SERVICE
+            value: "${KAFKA_SERVICE}"
+          - name: TOPIC
+            value: "${ROOT_TOPIC}-metrics"
+          - name: NAMESPACE
+            value: foo
+          image: innotech/orchestrator:4.0.0-4
+          name: "${NAME}-orchestrator"
+          ports:
+          - containerPort: 9999
+          resources:
+            limits:
+              cpu: 0.2
+              memory: 64Mi
+            requests:
+              cpu: 0.1
+              memory: 32Mi
+          restartPolicy: Always
+          securityContext:
+            privileged: true
+          serviceAccountName: ''
+    triggers:
+    - type: ConfigChange
+parameters:
+- name: NAME
+  description: Base name of the app
+  value: ml-ex-nn-tf-mod
+  required: true
+- name: ROOT_TOPIC
+  description: Basename for topics.
+  value: ml-ex-nn-tf-mod
+  required: true
+- name: PRODUCTS
+  description: Number of products.
+  value: '100'
+  required: true
+- name: KAFKA_SERVICE
+  description: Name of the Kafka broker to use including the namespace.
+  value: automodeling-kafka-svc.modeling.svc.cluster.local
+  required: true
+- name: REPO_URI
+  description: URI of the repository where the model will be persisted.
+  value: http://artifactory.ml.innotechapp.com/artifactory/ml/innotech/tensorflow_models/
+  required: true
+- name: HIDDEN_SIZE
+  description: Number of input samples used in each iteration.
+  value: '30'
+  required: true
+- name: RECOVER_SESSION
+  description: Recover previous training from artifactory.
+  value: 'false'
+  required: true
+- name: SAVE_INTERVAL
+  description: Number of seconds before saving the network to artifactory.
+  value: '120'
+  required: true
+- name: TEST_SIZE
+  description: 5 means 1/5.
+  value: '5'
+  required: true
+- name: EPOCHS
+  description: Number of iterations for each batch.
+  value: '1'
+  required: true
+- name: BATCH_SIZE
+  description: Number of input samples used in each iteration.
+  value: '300'
+  required: true
+- name: METRIC_INTERVAL
+  description: Number of batches between metric output.
+  value: '1'
+  required: true
+- name: USERS
+  description: Number of botnet users.
+  value: '300'
+  required: true
+- name: TICK_DURATION
+  description: Time between botnet ticks.
+  value: '1000'
+  required: true
+- name: LEARNING_RATE
+  description: Learning rate.
+  value: '0.01'
+  required: true
+- name: STOP_ACCURACY
+  description: It will stop botnet when this accuracy was reached
+  value: '1.0'
+  required: true

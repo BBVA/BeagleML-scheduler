@@ -1,0 +1,27 @@
+version: "2"
+
+services:
+
+  generic-neural-network-tensorflow:
+    image: fraud-mlp-mononode-experiment-0:0.1.2-2
+    environment:
+      MODEL_NAME: 'tf_model_1'
+      INPUT_SIZE: 12
+      HIDDEN_SIZE: '20'
+      BATCH_SIZE: 400
+      TEST_SIZE: 5
+      SAVE_INTERVAL: 1000
+      EPOCHS: 4
+      LEARNING_RATE: 0.02
+      ACTIVATION_FUNC: 'relu'
+      OPTIMIZER: 'AdamOptimizer'
+      TMP_DIRECTORY: './tmp'
+      ARTIFACTORY_URI: '${ARTIFACTORY_URI}'
+      KAFKA_SERVICE: '${KAFKA_SERVICE}'
+      KAFKA_PORT: 9092
+      OFFSET: oldest
+      TOPIC: train-0.2.0
+      METRICS_TOPIC: metrics
+      INPUT_SEPARATOR: ','
+      LOG_CONFIG_FILE: 'logging.yaml'
+      DEBUG_LEVEL: 'DEBUG'

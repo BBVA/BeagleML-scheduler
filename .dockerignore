@@ -1,0 +1,12 @@
+build*
+deploy*
+dist*
+doc*
+examples*
+tests*
+to_review*
+scheduler.*
+Jenkinsfile
+Dockerfile
+.idea*
+.git*
