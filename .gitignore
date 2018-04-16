@@ -147,6 +147,3 @@ ENV/
 # ignore private key used in local testing and keys to deploy
 id_rsa
 *.pem
-
-# Binaries
-scheduler/exec/oc

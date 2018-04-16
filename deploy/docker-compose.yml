@@ -2,7 +2,7 @@ version: "2"
 
 services:
   scheduler:
-    image: bbvalabs/scheduler:0.5.1-47
+    image: bbvalabs/beagleml-scheduler:1.0.0@sha256:76552edfd23b6cc2851f2594967573e42e96af10f950fd3e6eb0f4497014fa00
     environment:
       - ORCHESTRATOR=DockerCompose
       - ORCHESTRATOR_URL=http://localhost

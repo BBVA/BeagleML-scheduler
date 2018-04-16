@@ -54,7 +54,7 @@
           "container": {
             "type": "DOCKER",
             "docker": {
-		    "image": "beagleml-monitor:test" ,
+		    "image": "bbvalabs/beagleml-monitor:1.0.0@sha256:d15cd578b5e35dfefc46ce2c156cca6e8b359e0b4b9fe5a55983b07cf4916abd" ,
 		    "network": "HOST"
 	    }
           },
