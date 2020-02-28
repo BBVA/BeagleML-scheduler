@@ -6,7 +6,7 @@ chardet==3.0.4
 click==6.7
 confluent-kafka==0.11.0
 enum34==1.1.6
-Flask==0.11.0
+Flask==1.0
 Flask-Cors==3.0.3
 gevent==1.2.2
 greenlet==0.4.12
@@ -29,5 +29,5 @@ scipy==1.0.0
 six==1.11.0
 tensorflow==1.15.2
 tensorflow-tensorboard==0.4.0rc3
-urllib3==1.22
+urllib3==1.24.2
 Werkzeug==0.15.3
